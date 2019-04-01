@@ -5,7 +5,9 @@
 // + 3) form_urlencoded
 // + 4) form_data
 // 5) Add support retry
-// 6) Add timeout
+// + 6) Add timeout
+// 7) Add option base url
+// 8) Add option withCredentials
 
 
 (function() {
@@ -18,6 +20,17 @@
       form_data: function() { return 'multiparty/form-data'; },
       text: function() { return 'text/plain'; },
     }
+  };
+
+  /**
+   * @class
+   * Error_timeout - ajax timeout
+   * @param {string} msg
+   */
+  _r.Error_timeout = function (msg) {
+    var err = new Error(msg);
+    this.message = err.message;
+    this.stack = err.stack;
   };
 
   var empty_function = function() {};
@@ -44,21 +57,21 @@
    */
   _r.get = function(url, cbs, option) {
     cbs = cbs || {};
-    cbs.success = cbs.success || empty_function;
-    cbs.error = cbs.error || empty_function;
-    var success_cb = cbs.success;
-    var error_cb = cbs.error;
+    cbs.success = only_one_call(cbs.success);
+    cbs.error = only_one_call(cbs.error);
+
     option = option || {};
-    var xhr = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-    if (!xhr) {
-      throw new Error('Not found xhr');
-    }
+    var xhr = get_xhr();
+    var timer;
     xhr.open('GET', url, true);
 
     set_headers(xhr, option.headers);
 
     xhr.onreadystatechange = function() {
       var body;
+      if (timer) {
+        clearTimeout(timer);
+      }
       if (xhr.readyState === 4) {
         if (xhr.status >= 200 && xhr.status < 400) {
           if (cbs.success) {
@@ -66,20 +79,22 @@
             if (body instanceof Error) {
               return cbs.error(xhr, body);
             }
-            success_cb(xhr, body);
+            cbs.success(xhr, body);
           }
         } else {
           body = parse_body(xhr);
           if (body instanceof Error) {
             return cbs.error(xhr, body);
           }
-          error_cb(xhr, body);
+          cbs.error(xhr, body);
         }
       }
     };
+
     // default 5 sec
-    xhr.timeout = parseInt(option.timeout, 10) || 5000;
-    console.log(xhr.timeout);
+    var timeout = parseInt(option.timeout, 10) || 5000;
+    timer = start_timer(xhr, url, timeout, cbs.error);
+
     xhr.send(null);
 
   };
@@ -91,24 +106,26 @@
     void function (method) {
       _r[method.toLowerCase()] = function(url, data, cbs, option) {
         cbs = cbs || {};
-        var success_cb = cbs.success = cbs.success || function() {};
-        var error_cb = cbs.error = cbs.error || function() {};
-        option = option || {};
-        var xhr = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
-        if (!xhr) {
-          throw new Error('Not found xhr');
-        }
-        xhr.open(method, url, true);
+        cbs.success = only_one_call(cbs.success);
+        cbs.error = only_one_call(cbs.error);
 
+        option = option || {};
+        var timer;
+
+        var xhr = get_xhr();
+        xhr.open(method, url, true);
         set_headers(xhr, option.headers);
 
         data = str_data(option.headers || {}, data);
         if (data instanceof Error) {
-          return error_cb(xhr, data);
+          return cbs.error(xhr, data);
         }
 
         xhr.onreadystatechange = function() {
           var body;
+          if (timer) {
+            clearTimeout(timer);
+          }
           if (xhr.readyState === 4) {
             if (xhr.status >= 200 && xhr.status < 400) {
               if (cbs.success) {
@@ -116,19 +133,22 @@
                 if (body instanceof Error) {
                   return cbs.error(xhr, body);
                 }
-                success_cb(xhr, body);
+                cbs.success(xhr, body);
               }
             } else {
               body = parse_body(xhr);
               if (body instanceof Error) {
                 return cbs.error(xhr, body);
               }
-              error_cb(xhr, body);
+              cbs.error(xhr, body);
             }
           }
         };
+
         // default 5 sec
-        xhr.timeout = parseInt(option.timeout, 10) || 5000;
+        var timeout = parseInt(option.timeout, 10) || 5000;
+        timer = start_timer(xhr, url, timeout, cbs.error);
+
         xhr.send(data);
 
       };
@@ -213,6 +233,53 @@
     return data;
   }
 
+
+  /**
+   * start_timer - start timer for request
+   * @param  {XMLHttpRequest} xhr
+   * @param  {string} url      timeout
+   * @param  {function} cb_error
+   * @return {Timeout}
+   */
+  function start_timer(xhr, url, timeout, cb_error) {
+    return setTimeout(function() {
+      // order is important, because, when we call abort, then called "onreadystatechange",
+      // but callback of error called only once and we lose error object
+      cb_error(xhr, new _r.Error_timeout('Ajax timeout error ' + timeout + 'ms url='+url));
+      xhr.abort();
+    }, timeout);
+  }
+
+
+  /**
+   * get_xhr
+   * @throws {Error} If not found xhr
+   * @return {XMLHttpRequest}
+   */
+  function get_xhr() {
+    var xhr = (window.XMLHttpRequest) ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
+    if (!xhr) {
+      throw new Error('Not found xhr');
+    }
+    return xhr;
+  }
+
+
+  /**
+   * only_one_call
+   * @param  {function} fn
+   * @return {function}
+   */
+  function only_one_call(fn) {
+    var call = false;
+    fn = fn || empty_function;
+    return function () {
+      if (!call) {
+        call = true;
+        fn.apply(null, arguments);
+      }
+    };
+  }
 
   // EXAMPLES
   // _r.get('/aj/1', {
@@ -312,18 +379,49 @@
   // };
 
   // TEST TIMEOUT FOR REQUEST
-  _r.get('/aj/timeout_error', {
-    success: function(xhr, body) {
-      console.log('success=', xhr, body);
-    },
-    error: function(xhr, body) {
-      console.log('error=', xhr, body);
-    }
-  }, {
-    headers: {
-      'content-type': _r.content_types.json(),
-    }
-  });
+  // _r.post('/aj/test/long_request', {
+  //   success: function(xhr, body) {
+  //     console.log('success=', xhr, body);
+  //   },
+  //   error: function(xhr, body) {
+  //     console.log('error=', xhr, body);
+  //   }
+  // }, {
+  //   headers: {
+  //     'content-type': _r.content_types.json(),
+  //   },
+  //   /* timeout: 100000, */
+  // });
+
+  // POST TEST TIMEOUT FOR REQUEST
+  // _r.post('/aj/long_request', { Vasya: 'p12313' } , {
+  //   success: function(xhr, body) {
+  //     console.log('success=', xhr, body);
+  //   },
+  //   error: function(xhr, body) {
+  //     console.log('error=', xhr, body);
+  //   }
+  // }, {
+  //   headers: {
+  //     'content-type': _r.content_types.json(),
+  //   },
+  //   /** timeout: 100000, */
+  // });
+
+  // // GET TEST TIMEOUT FOR REQUEST
+  // _r.get('/aj/long_request', {
+  //   success: function(xhr, body) {
+  //     console.log('success=', xhr, body);
+  //   },
+  //   error: function(xhr, body) {
+  //     console.log('error=', xhr, body);
+  //   }
+  // }, {
+  //   headers: {
+  //     'content-type': _r.content_types.json(),
+  //   },
+  //   /** timeout: 100000, */
+  // });
 
 }());
 
