@@ -10,7 +10,7 @@
 // 8) Add option withCredentials
 
 
-(function() {
+window._xr = (function() {
   var _r = {
     content_types: {
       json: function() { return 'application/json'; },
@@ -38,8 +38,8 @@
   /**
    * _r.get
    * @param  {string} url    [description]
-   * @param  {object{ success: (xhr), error: (xhr) }} cbs
-   * @param  { headers: object{ 'Content-Type': string } } option
+   * @param  {{ success: (xhr), error: (xhr) }} cbs
+   * @param  { headers: { 'Content-Type': string }, [timeout=5000]: number } option
    * @example
    _r.get('/aj/1', {
      [success]: function(xhr, body) {
@@ -104,6 +104,27 @@
   for (var i = 0, l = list_methods.length; i < l; i++) {
     var method = list_methods[i];
     void function (method) {
+      /**
+       * _r.post || _r.put || _r.delete
+       * @param  {string} url
+       * @param  {object} data - json
+       * @param  {{ success: (xhr), error: (xhr) }} cbs
+       * @param  { headers: { 'Content-Type': string }, [timeout=5000]: number } option
+       * @example
+       _r.post('/aj/1', {} {
+         [success]: function(xhr, body) {
+           console.log('success=', xhr, body);
+         },
+         [error]: function(xhr, body) {
+           console.log('error=', xhr, body);
+         }
+       }, {
+         [headers]: {
+           'content-type': _r.content_types.json(),
+         },
+         [timeout=5000]: boolean, // ms
+       });
+       */
       _r[method.toLowerCase()] = function(url, data, cbs, option) {
         cbs = cbs || {};
         cbs.success = only_one_call(cbs.success);
@@ -195,8 +216,8 @@
 
   /**
    * str_data: handle data before send to server
-   * @param  object{'Content-type': string } headers
-   * @param  {object{ file: File? }} data
+   * @param  {{'Content-type': string }} headers
+   * @param  {{ file: File? }} data
    * @return {string | FormData}
    */
   function str_data(headers, data) {
@@ -281,149 +302,151 @@
     };
   }
 
-  // EXAMPLES
-  // _r.get('/aj/1', {
-  //   success: function(xhr, body) {
-  //     console.log('success=', xhr, body);
-  //   },
-  //   error: function(xhr, body) {
-  //     console.log('error=', xhr, body);
-  //   }
-  // }, {
-  //   headers: {
-  //     'content-type': _r.content_types.json(),
-  //   }
-  // });
-
-  // _r.post('/aj/1', {
-  //   user_name: 'Vasya'
-  // }, {
-  //   success: function(xhr, body) {
-  //     console.log('success=', xhr, body);
-  //   },
-  //   error: function(xhr, body) {
-  //     console.log('error=', xhr, body);
-  //   }
-  // }, {
-  //   headers: {
-  //     'content-type': _r.content_types.json(),
-  //   }
-  // });
-
-  // _r.put('/aj/2', {
-  //   user_name: 'Vasya'
-  // }, {
-  //   success: function(xhr, body) {
-  //     console.log('success=', xhr, body);
-  //   },
-  //   error: function(xhr, body) {
-  //     console.log('error=', xhr, body);
-  //   }
-  // }, {
-  //   headers: {
-  //     'content-type': _r.content_types.json(),
-  //   }
-  // });
-
-
-  // _r.delete('/aj/2', {
-  //   user_name: 'Vasya'
-  // }, {
-  //   success: function(xhr, body) {
-  //     console.log('success=', xhr, body);
-  //   },
-  //   error: function(xhr, body) {
-  //     console.log('error=', xhr, body);
-  //   }
-  // }, {
-  //   headers: {
-  //     'content-type': _r.content_types.json(),
-  //   }
-  // });
-  //
-
-  // SEND DATA AS FORM
-  // _r.post('/aj//users/1', {
-  //   user_name: 'Vasya'
-  // }, {
-  //   success: function(xhr, body) {
-  //     console.log('success=', xhr, body);
-  //   },
-  //   error: function(xhr, body) {
-  //     console.log('error=', xhr, body);
-  //   }
-  // }, {
-  //   headers: {
-  //     'content-type': _r.content_types.form_urlencoded(),
-  //   }
-  // });
-
-  // LOAD FILE
-  // document.getElementById('file').onchange = function () {
-  //   // send data with upload file
-  //   _r.post('/aj/upload/1', {
-  //     user_name: 'Vasya',
-  //     file: document.getElementById('file').files[0]
-  //   }, {
-  //     success: function(xhr, body) {
-  //       console.log('success=', xhr, body);
-  //     },
-  //     error: function(xhr, body) {
-  //       console.log('error=', xhr, body);
-  //     }
-  //   }, {
-  //     headers: {
-  //       'content-type': _r.content_types.form_data(),
-  //     }
-  //   });
-  // };
-
-  // TEST TIMEOUT FOR REQUEST
-  // _r.post('/aj/test/long_request', {
-  //   success: function(xhr, body) {
-  //     console.log('success=', xhr, body);
-  //   },
-  //   error: function(xhr, body) {
-  //     console.log('error=', xhr, body);
-  //   }
-  // }, {
-  //   headers: {
-  //     'content-type': _r.content_types.json(),
-  //   },
-  //   /* timeout: 100000, */
-  // });
-
-  // POST TEST TIMEOUT FOR REQUEST
-  // _r.post('/aj/long_request', { Vasya: 'p12313' } , {
-  //   success: function(xhr, body) {
-  //     console.log('success=', xhr, body);
-  //   },
-  //   error: function(xhr, body) {
-  //     console.log('error=', xhr, body);
-  //   }
-  // }, {
-  //   headers: {
-  //     'content-type': _r.content_types.json(),
-  //   },
-  //   /** timeout: 100000, */
-  // });
-
-  // // GET TEST TIMEOUT FOR REQUEST
-  // _r.get('/aj/long_request', {
-  //   success: function(xhr, body) {
-  //     console.log('success=', xhr, body);
-  //   },
-  //   error: function(xhr, body) {
-  //     console.log('error=', xhr, body);
-  //   }
-  // }, {
-  //   headers: {
-  //     'content-type': _r.content_types.json(),
-  //   },
-  //   /** timeout: 100000, */
-  // });
-
+  return _r;
 }());
+
+
+// EXAMPLES
+// _xr.get('/aj/1', {
+//   success: function(xhr, body) {
+//     console.log('success=', xhr, body);
+//   },
+//   error: function(xhr, body) {
+//     console.log('error=', xhr, body);
+//   }
+// }, {
+//   headers: {
+//     'content-type': _xr.content_types.json(),
+//   }
+// });
+
+// _xr.post('/aj/1', {
+//   user_name: 'Vasya'
+// }, {
+//   success: function(xhr, body) {
+//     console.log('success=', xhr, body);
+//   },
+//   error: function(xhr, body) {
+//     console.log('error=', xhr, body);
+//   }
+// }, {
+//   headers: {
+//     'content-type': _xr.content_types.json(),
+//   }
+// });
+
+// _xr.put('/aj/2', {
+//   user_name: 'Vasya'
+// }, {
+//   success: function(xhr, body) {
+//     console.log('success=', xhr, body);
+//   },
+//   error: function(xhr, body) {
+//     console.log('error=', xhr, body);
+//   }
+// }, {
+//   headers: {
+//     'content-type': _xr.content_types.json(),
+//   }
+// });
+
+
+// _xr.delete('/aj/2', {
+//   user_name: 'Vasya'
+// }, {
+//   success: function(xhr, body) {
+//     console.log('success=', xhr, body);
+//   },
+//   error: function(xhr, body) {
+//     console.log('error=', xhr, body);
+//   }
+// }, {
+//   headers: {
+//     'content-type': _xr.content_types.json(),
+//   }
+// });
+//
+
+// SEND DATA AS FORM
+// _xr.post('/aj//users/1', {
+//   user_name: 'Vasya'
+// }, {
+//   success: function(xhr, body) {
+//     console.log('success=', xhr, body);
+//   },
+//   error: function(xhr, body) {
+//     console.log('error=', xhr, body);
+//   }
+// }, {
+//   headers: {
+//     'content-type': _xr.content_types.form_urlencoded(),
+//   }
+// });
+
+// LOAD FILE
+// document.getElementById('file').onchange = function () {
+//   // send data with upload file
+//   _xr.post('/aj/upload/1', {
+//     user_name: 'Vasya',
+//     file: document.getElementById('file').files[0]
+//   }, {
+//     success: function(xhr, body) {
+//       console.log('success=', xhr, body);
+//     },
+//     error: function(xhr, body) {
+//       console.log('error=', xhr, body);
+//     }
+//   }, {
+//     headers: {
+//       'content-type': _xr.content_types.form_data(),
+//     }
+//   });
+// };
+
+// TEST TIMEOUT FOR REQUEST
+// _xr.post('/aj/test/long_request', {
+//   success: function(xhr, body) {
+//     console.log('success=', xhr, body);
+//   },
+//   error: function(xhr, body) {
+//     console.log('error=', xhr, body);
+//   }
+// }, {
+//   headers: {
+//     'content-type': _xr.content_types.json(),
+//   },
+//   /* timeout: 100000, */
+// });
+
+// POST TEST TIMEOUT FOR REQUEST
+// _xr.post('/aj/long_request', { Vasya: 'p12313' } , {
+//   success: function(xhr, body) {
+//     console.log('success=', xhr, body);
+//   },
+//   error: function(xhr, body) {
+//     console.log('error=', xhr, body);
+//   }
+// }, {
+//   headers: {
+//     'content-type': _xr.content_types.json(),
+//   },
+//   /** timeout: 100000, */
+// });
+
+// // GET TEST TIMEOUT FOR REQUEST
+// _xr.get('/aj/long_request', {
+//   success: function(xhr, body) {
+//     console.log('success=', xhr, body);
+//   },
+//   error: function(xhr, body) {
+//     console.log('error=', xhr, body);
+//   }
+// }, {
+//   headers: {
+//     'content-type': _xr.content_types.json(),
+//   },
+//   /** timeout: 100000, */
+// });
 
 
 
